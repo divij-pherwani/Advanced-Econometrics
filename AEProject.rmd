@@ -1,9 +1,11 @@
 ---
-title: "Who survived the Titanic disaster?  Exploring data with Multinomial Logistic Regression"
+title: Who survived the Titanic disaster?  Exploring data with Multinomial Logistic
+  Regression
 author: 'Prepared by: Divij Pherwani (430990) Andrea Furmanek (345183)'
-date: 04/06/2021
+date: "04/06/2021"
 output:
   pdf_document: default
+  word_document: default
   html_document:
     df_print: paged
 ---
@@ -11,7 +13,11 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE)
-library(vcd)
+```
+
+```{r}
+# Loading Libraries
+library("vcd")
 library("sandwich")
 library("zoo")
 library("lmtest")
@@ -160,10 +166,7 @@ model4 <- multinom(Survived ~ .-Fare - Farepp-Embarked-SibSp-Parch, fdf)
 
 
 ```{r}
-#summary(model1)
-#summary(model2)
-#summary(model3)
-#summary(model4)
+#summary(model1); summary(model2); summary(model3); summary(model4)
 ```
 
 Performing statistical significance
@@ -200,6 +203,7 @@ stargazer(model1, model2, model3, model4, type = "text")
 Generating data in mlogit.data format
 
 ```{r}
+# Generating data in mlogit.data format
 mldf <- mlogit.data(fdf, shape = "wide", choice= "Survived")
 head(mldf)
 ```
@@ -207,6 +211,7 @@ head(mldf)
 Running the model on mlogit data
 
 ```{r}
+# Running the model on mlogit data
 model <- mlogit(Survived~ 0| Sex + Family + Pclass + Age, data = mldf)
 model
 ```
@@ -214,6 +219,7 @@ model
 Summary of the mlogit model
 
 ```{r}
+# Summary of the mlogit model 
 summary(model)
 ```
 # 5. Results & Findings
@@ -245,7 +251,8 @@ The model is created with non linear relation (square of Fare) and interactions 
 
 fdf$Fare2 <- fdf$Fare^2
 fdf$Farepp2 <- fdf$Farepp^2
-nlr_model <- multinom(Survived ~ Fare + Fare2 + Sex + Pclass + Age+ Age*Pclass + Sex * Pclass, data = fdf)
+nlr_model <- multinom(Survived ~ Fare + Fare2 + Sex + Pclass + Age+ Age*Pclass 
+                      + Sex * Pclass, data = fdf)
 stargazer(nlr_model, type = "text")
 
 ```
@@ -255,10 +262,12 @@ stargazer(nlr_model, type = "text")
 Marginal effects are used to quantify the incremental risk associated with each factor.We start by creating a vector z which contains average characterstics. 
 
 ```{r}
-# Calculation and interpretation of marginal effects for the model (from the general-tospecific approach)
+# Calculation and interpretation of marginal effects for the model 
 
 model <- mlogit(Survived~ 0| Fare + Family +Age, data = mldf)
-z <- with(mldf, data.frame(Fare = tapply(Fare, index(model)$alt, mean), Family = tapply(Family, index(model)$alt, mean), Age = tapply(Age, index(model)$alt, mean)))
+z <- with(mldf, data.frame(Fare = tapply(Fare, index(model)$alt, mean), Family = 
+                             tapply(Family, index(model)$alt, mean), 
+                           Age = tapply(Age, index(model)$alt, mean)))
 
 ```
 
@@ -331,11 +340,9 @@ linktest = function(model)
 
 mylogit <- multinom(Survived~ Sex + Pclass + Age + Family + Sex*Pclass, data=fdf)
 lt <- linktest(mylogit)
-```
-
-```{r}
 stargazer(lt, type="text")
 ```
+
 
 
 ## Hypothesis Testing 
@@ -369,7 +376,7 @@ Fare is insignificant as the p-value is greater than 0.05. We fail to reject the
 However, having a family member on board is significant as the p-value is less than 0.05. We reject the null hypothesis. Having a family member on board is significant for survival. As the coefficient is negative, it is in fact reducing the probability to survive significantly. 
 
 ```{r}
-
+# Hypothesis Testing 
 hypothesis <- multinom(Survived ~ Pclass + Age + Sex + Family + Fare, data = fdf)
 stargazer(hypothesis, type = "text")
 
@@ -379,11 +386,12 @@ stargazer(hypothesis, type = "text")
 
 In our analysis, we concluded that an econometric model can be useful in predicting what features increases survival rate during sinking of the Titanic in 1912. As we know from literature one of the reasons that the shipwreck lead to such loss of life is that were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, like younger passengers, the upper-class and those who had no family members on board which we confirmed with the results of the Multinomial Logit Model.
 
-# Bibliography
 
-1. Whitley M., “Using statistical learning to predict survival of passengers on the RMS Titanic” K-State Research Exchange, (1), 2015, pp. 32
 
-2. Kshirsagar V., Phalke N., “Titanic Survival Analysis using Logistic Regression” International Research Journal of Engineering and Technology (IRJET), (2), 2019, pp. 90︎
+# Appendix 
 
-3. Donges N., “Predicting the Survival of Titanic Passengers” towardsdatascience.com, (3), 2018
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+
+```
+
 

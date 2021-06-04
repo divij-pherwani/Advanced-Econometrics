@@ -1645,7 +1645,7 @@ pre code {
 </div>
 <div id="literature-review" class="section level1">
 <h1>2. Literature review</h1>
-<p>The Titanic disaster resulting in the sinking of the British passenger ship with the loss of 722 passengers and crew occurred in the North Atlantic on April 15, 1912. Although it has been many years since this maritime disaster took place, research on understanding what impacts individual’s survival or death has been attracting researchers’ attention. It appears that this is somewhat of a common problem to work on especially that data set is publicly available. Many researchers were exploring this data with different predictive models. For example scientists from Kansas State University applied CART methodology as well as bagging and random forests that provide quite good prediction accuracy at the level of 77%<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>. Using Logistic Regression also provides satisfactory results, accuracy i.e. almost of about 95%<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> which was obtained by researchers from University of San Francisco. They concluded that the model predicted better with binary dependent variables which means the variable has a binary value as its output. Applying other methods, like random forest model predicts even better than previous models giving 93% of accuracy<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>.</p>
+<p>The Titanic disaster resulting in the sinking of the British passenger ship with the loss of 722 passengers and crew occurred in the North Atlantic on April 15, 1912. Although it has been many years since this maritime disaster took place, research on understanding what impacts individual’s survival or death has been attracting researchers’ attention. It appears that this is somewhat of a common problem to work on especially that data set is publicly available. Many researchers were exploring this data with different predictive models. For example scientists from Kansas State University applied CART methodology as well as bagging and random forests that provide quite good prediction accuracy at the level of 77%. Using Logistic Regression also provides satisfactory results, accuracy i.e. almost of about 95% which was obtained by researchers from University of San Francisco. They concluded that the model predicted better with binary dependent variables which means the variable has a binary value as its output. Applying other methods, like random forest model predicts even better than previous models giving 93% of accuracy.</p>
 </div>
 <div id="dataset-and-preprocessing" class="section level1">
 <h1>3.Dataset and preprocessing</h1>
@@ -2175,14 +2175,138 @@ pre code {
 </div>
 <div id="bibliography" class="section level1">
 <h1>Bibliography</h1>
-</div>
-<div class="footnotes">
-<hr />
-<ol>
-<li id="fn1"><p>Whitley M., “Using statistical learning to predict survival of passengers on the RMS Titanic” K-State Research Exchange, (1), 2015, pp. 32<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
-<li id="fn2"><p>Kshirsagar V., Phalke N., “Titanic Survival Analysis using Logistic Regression” International Research Journal of Engineering and Technology (IRJET), (2), 2019, pp. 90<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
-<li id="fn3"><p>Donges N., “Predicting the Survival of Titanic Passengers” towardsdatascience.com, (3), 2018<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+<ol style="list-style-type: decimal">
+<li><p>Whitley M., “Using statistical learning to predict survival of passengers on the RMS Titanic” K-State Research Exchange, (1), 2015, pp. 32</p></li>
+<li><p>Kshirsagar V., Phalke N., “Titanic Survival Analysis using Logistic Regression” International Research Journal of Engineering and Technology (IRJET), (2), 2019, pp. 90︎</p></li>
+<li><p>Donges N., “Predicting the Survival of Titanic Passengers” towardsdatascience.com, (3), 2018︎</p></li>
 </ol>
+</div>
+<div id="appendix" class="section level1">
+<h1>Appendix</h1>
+<pre class="r"><code>knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE)
+# Loading Libraries
+library(&quot;vcd&quot;)
+library(&quot;sandwich&quot;)
+library(&quot;zoo&quot;)
+library(&quot;lmtest&quot;)
+library(&quot;MASS&quot;)
+library(&quot;aod&quot;)
+library(&quot;nnet&quot;)
+library(&quot;Formula&quot;)
+library(&quot;miscTools&quot;)
+library(&quot;maxLik&quot;)
+library(&quot;mlogit&quot;)
+library(&quot;car&quot;)
+library(&quot;survival&quot;)
+library(&quot;AER&quot;)
+library(&quot;stargazer&quot;)
+mosaic(~Class+Sex+Age+Survived, data=Titanic, shade=TRUE, legend=TRUE)
+# Loading Dataset
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+dfx &lt;- read.csv(&quot;train.csv&quot;)
+df1 &lt;- read.csv(&quot;test.csv&quot;)
+df2 &lt;- read.csv(&quot;gender_submission.csv&quot;)
+dfy &lt;- merge(df1, df2)
+df &lt;- rbind(dfx, dfy)
+head(df)
+# EDA
+summary(df)
+# Processing &amp; Cleaning Data set
+fdf &lt;- subset(df, df$Embarked != &quot;&quot;)
+fdf &lt;- subset(fdf, fdf$Fare != &quot;&quot;)
+fdf &lt;- subset(fdf, fdf$Age != &quot;&quot;)
+fdf$Family &lt;- fdf$SibSp + fdf$Parch
+fdf$Survived &lt;- ifelse(fdf$Survived == 0, &quot;No&quot;, &quot;Yes&quot;)
+fdf$Pclass &lt;- as.factor(fdf$Pclass)
+fdf$Embarked &lt;- as.factor(fdf$Embarked)
+fdf$Survived &lt;- as.factor(fdf$Survived)
+fdf$Sex &lt;- as.factor(fdf$Sex)
+head(fdf)
+# Filtering Data 
+fdf &lt;- fdf[,c(&quot;Sex&quot;, &quot;Pclass&quot;, &quot;SibSp&quot;, &quot;Parch&quot;, &quot;Family&quot;, &quot;Embarked&quot;, &quot;Survived&quot;, &quot;Fare&quot;, &quot;Age&quot;)]
+fdf$Farepp &lt;- fdf$Fare/(fdf$Family + 1)
+# Modeling
+model1 &lt;- multinom(Survived ~ ., data = fdf)
+model2 &lt;- multinom(Survived ~ .-Fare - Farepp, data = fdf)
+model3 &lt;- multinom(Survived ~ .-Fare - Farepp-Embarked, fdf)
+model4 &lt;- multinom(Survived ~ .-Fare - Farepp-Embarked-SibSp-Parch, fdf)
+#summary(model1); summary(model2); summary(model3); summary(model4)
+# statistical significance
+z1 &lt;- summary(model1)$coefficients/summary(model1)$standard.errors
+z2 &lt;- summary(model2)$coefficients/summary(model2)$standard.errors
+z3 &lt;- summary(model3)$coefficients/summary(model3)$standard.errors
+z4 &lt;- summary(model4)$coefficients/summary(model4)$standard.errors
+stargazer(z1,z2,z3,z4, type = &quot;text&quot;)
+# 2-tailed z test
+p1 &lt;- (1 - pnorm(abs(z1), 0, 1)) * 2
+p2 &lt;- (1 - pnorm(abs(z2), 0, 1)) * 2
+p3 &lt;- (1 - pnorm(abs(z3), 0, 1)) * 2
+p4 &lt;- (1 - pnorm(abs(z4), 0, 1)) * 2
+stargazer(p1,p2,p3,p4, type = &quot;text&quot;)
+# Comparing all Models
+stargazer(model1, model2, model3, model4, type = &quot;text&quot;)
+# Generating data in mlogit.data format
+mldf &lt;- mlogit.data(fdf, shape = &quot;wide&quot;, choice= &quot;Survived&quot;)
+head(mldf)
+# Running the model on mlogit data
+model &lt;- mlogit(Survived~ 0| Sex + Family + Pclass + Age, data = mldf)
+model
+# Summary of the mlogit model 
+summary(model)
+# General-to-specific method for variables selection
+x &lt;- multinom(Survived~ Pclass + Sex + Family + Age, data = fdf)
+y &lt;- multinom(Survived~1, data=fdf)
+lrtest(x, y)
+# One nonlinear relationship and interaction between variables
+
+fdf$Fare2 &lt;- fdf$Fare^2
+fdf$Farepp2 &lt;- fdf$Farepp^2
+nlr_model &lt;- multinom(Survived ~ Fare + Fare2 + Sex + Pclass + Age+ Age*Pclass 
+                      + Sex * Pclass, data = fdf)
+stargazer(nlr_model, type = &quot;text&quot;)
+
+# Calculation and interpretation of marginal effects for the model 
+
+model &lt;- mlogit(Survived~ 0| Fare + Family +Age, data = mldf)
+z &lt;- with(mldf, data.frame(Fare = tapply(Fare, index(model)$alt, mean), Family = 
+                             tapply(Family, index(model)$alt, mean), 
+                           Age = tapply(Age, index(model)$alt, mean)))
+
+# Marginal effects for Fare
+x &lt;- effects(model, covariate = &quot;Fare&quot;, data = z)
+stargazer(x, type = &quot;text&quot;)
+# Marginal effects for Family
+y &lt;- effects(model, covariate = &quot;Family&quot;, data = z)
+stargazer(y, type = &quot;text&quot;)
+
+# Marginal effects for Age
+z &lt;- effects(model, covariate = &quot;Age&quot;, data = z)
+stargazer(z, type = &quot;text&quot;)
+#present models in one quality table
+
+final &lt;- multinom(Survived~ Sex + Family + Pclass + Age + Pclass*Sex, data = fdf)
+
+stargazer(model1, final, model4, type=&quot;text&quot;)
+
+# perform the linktest and interpret the result
+
+linktest = function(model) 
+{
+  y = as.numeric(fdf$Survived) -1
+  yhat = log(model$fitted.values/(1-model$fitted.values))
+  yhat2 = yhat^2
+  # auxiliary regression
+  aux.reg = multinom(y~yhat+yhat2)
+  show(summary(aux.reg))
+  return(aux.reg)
+}
+
+mylogit &lt;- multinom(Survived~ Sex + Pclass + Age + Family + Sex*Pclass, data=fdf)
+lt &lt;- linktest(mylogit)
+stargazer(lt, type=&quot;text&quot;)
+# Hypothesis Testing 
+hypothesis &lt;- multinom(Survived ~ Pclass + Age + Sex + Family + Fare, data = fdf)
+stargazer(hypothesis, type = &quot;text&quot;)</code></pre>
 </div>
 
 
