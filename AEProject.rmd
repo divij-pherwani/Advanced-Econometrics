@@ -1,12 +1,34 @@
 ---
 title: "Who survived the Titanic disaster?  Exploring data with Multinomial Logistic Regression"
 author: 'Prepared by: Divij Pherwani (430990) Andrea Furmanek (345183)'
+date: 04/06/2021
 output:
-  word_document: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE)
+library(vcd)
+library("sandwich")
+library("zoo")
+library("lmtest")
+library("MASS")
+library("aod")
+library("nnet")
+library("Formula")
+library("miscTools")
+library("maxLik")
+library("mlogit")
+library("car")
+library("survival")
+library("AER")
+library("stargazer")
+```
+
+
 
 # Abstract
 
@@ -62,29 +84,11 @@ __"Embarked"__: Port of embarkation of the passenger (C = Cherbourg; Q = Queenst
 
 
 ```{r}
-library(vcd)
 mosaic(~Class+Sex+Age+Survived, data=Titanic, shade=TRUE, legend=TRUE)
 ```
 
 ## 3.2.Preprocessing
 
-
-```{r message=FALSE, warning=FALSE}
-library("sandwich")
-library("zoo")
-library("lmtest")
-library("MASS")
-library("aod")
-library("nnet")
-library("Formula")
-library("miscTools")
-library("maxLik")
-library("mlogit")
-library("car")
-library("survival")
-library("AER")
-library("stargazer")
-```
 
 As previously mentioned we started our data preprocessing with merging respectively datasets to get complete data for further transformations.
 
@@ -105,7 +109,7 @@ head(df)
 summary(df)
 ```
 
-Since the data can have missing fields, incomplete fields, or fields containing hidden or useless information, a crucial step is to remove them in order not to complicate the further analysis. Variables ``Fare`` and ``Embarked`` will not be used, so we decided to remove them. Especially  embarked variable will not be used as is not individual specific. 
+Since the data can have missing fields, incomplete fields, or fields containing hidden or useless information, a crucial step is to remove them in order not to complicate the further analysis. Variables ``Fare``, ``Age`` and ``Embarked`` will not be used, so we decided to remove them. Especially  embarked variable will not be used as is not individual specific. 
 
 Our second hypothesis has to verify whether having a family on board has increased the chance of passenger to survive, therefore a new variable ``Family`` has been created as a sum of already existing variables ``SibSp`` - number of siblings and spouses of the passenger aboard and ``Parch``- number of parents and children of the passenger aboard.
 
@@ -135,6 +139,17 @@ fdf$Farepp <- fdf$Fare/(fdf$Family + 1)
 
 # Exploring and Test Multinom Models 
 
+Generating 4 models using multinom function. 
+
+Formulas for models, 
+
+model1 <- Survived ~ Sex + Pclass + Age + Family + Fare + Farepp + Embarked + SibSp + Parch
+model2 <- Survived ~ Sex + Pclass + Age + Family + Embarked + SibSp + Parch 
+model3 <- Survived ~ Sex + Pclass + Age + Family + SibSp + Parch
+model4 <- Survived ~ Sex + Pclass + Age + Family  -
+
+
+
 ```{r}
 # Modeling
 model1 <- multinom(Survived ~ ., data = fdf)
@@ -151,6 +166,7 @@ model4 <- multinom(Survived ~ .-Fare - Farepp-Embarked-SibSp-Parch, fdf)
 #summary(model4)
 ```
 
+Performing statistical significance
 
 ```{r}
 # statistical significance
@@ -161,7 +177,7 @@ z4 <- summary(model4)$coefficients/summary(model4)$standard.errors
 stargazer(z1,z2,z3,z4, type = "text")
 ```
 
-
+Performing 2-tailed z test
 
 ```{r}
 # 2-tailed z test
@@ -181,23 +197,28 @@ stargazer(model1, model2, model3, model4, type = "text")
 
 # Exploring MLogit Data and Model
 
+Generating data in mlogit.data format
 
 ```{r}
 mldf <- mlogit.data(fdf, shape = "wide", choice= "Survived")
-mldf
+head(mldf)
 ```
+
+Running the model on mlogit data
 
 ```{r}
 model <- mlogit(Survived~ 0| Sex + Family + Pclass + Age, data = mldf)
 model
 ```
 
+Summary of the mlogit model
+
 ```{r}
 summary(model)
 ```
+# 5. Results & Findings
 
-
-# Part A
+## Part A
 
 We compare the restricted model to the unrestricted model to obtain the joint significance test. Number of restrictions are 4. We compare the restricted model to the constant model using likelihood ratio test.
 
@@ -214,7 +235,7 @@ y <- multinom(Survived~1, data=fdf)
 lrtest(x, y)
 ```
 
-# Part B
+## Part B
 
 
 The model is created with non linear relation (square of Fare) and interactions between Age:Pclass & Sex:Pclass. The Fare and Fare^2 both have a p-value < 0.05. Similarly, for Pclass2:Age, Sexmale:Pclass2 and Sexmale:Pclass3 have p-value < 0.05. This means, we reject the null hypothesis. The parameters add meaningful addition to model. Pclass:Age interaction is insignificant.    
@@ -229,7 +250,7 @@ stargazer(nlr_model, type = "text")
 
 ```
 
-# Part C
+## Part C
 
 Marginal effects are used to quantify the incremental risk associated with each factor.We start by creating a vector z which contains average characterstics. 
 
@@ -268,7 +289,7 @@ stargazer(z, type = "text")
 ```
 
 
-# Part D
+## Part D
 
 The final model is (3) in the table which can be represented by the formula:
 
@@ -277,21 +298,20 @@ log(P(Survived=Yes)/P(Survived=No)) = 4.411 + (-3.703 * Sexmale) + (-1.306 * Pcl
 ```{r}
 #present models in one quality table
 
-inter <- multinom(Survived~ Sex + Family + Pclass + Age + Sex*Age, data = fdf)
+final <- multinom(Survived~ Sex + Family + Pclass + Age + Pclass*Sex, data = fdf)
 
-stargazer(model1, inter, model4, type="text")
+stargazer(model1, final, model4, type="text")
 
 ```
 
 
-# Part E
+## Part E
 
-The linktest is used to check the appropriate form of the model. The condition for linktest is to have yhat as significant and  
-yhat^2 as insgnificant. 
+The linktest is used to check the appropriate form of the model. The motivation behind the link test is the idea that if a regression is specified appropriately you should not be able to find additional independent variables. 
 
-Ho: The model has appropriate form
+The condition for linktest is to have yhat as significant and  yhat^2 as insgnificant. (Ho: The model has appropriate form)
 
-In the below model, we have yhat and yhat2 as significant. Therefore, we fail to reject the null hypothesis. 
+In the below model, we have yhat as significant and yhat2 as insignificant. Therefore, we fail to reject the null hypothesis. The model has an an appropriate form. 
 
 
 
@@ -309,7 +329,7 @@ linktest = function(model)
   return(aux.reg)
 }
 
-mylogit <- multinom(Survived~ Sex + Pclass + Age + Family, data=fdf)
+mylogit <- multinom(Survived~ Sex + Pclass + Age + Family + Sex*Pclass, data=fdf)
 lt <- linktest(mylogit)
 ```
 
@@ -318,16 +338,52 @@ stargazer(lt, type="text")
 ```
 
 
+## Hypothesis Testing 
 
-# Hypothesis Testing 
+**Hypothesis 1**
+
+H0: Having a seat in higher class insignificant to survive.  
+
+H1: Having a seat in higher class is significant to survive.
+
+
+
+**Result 1**
+
+The parameters Pclass2 and Pclass3 are significant as their p-value is < 0.05. Having a seat in class 2 and class 3 is significant to survival but as the coefficient is negative it decreases the probability of survival.The rate of survival is class 2 is more than in class 3. The rate of survival in class 1 is the most as pclass 2 = 0 and pclass 3 = 0.
+
+Therefore, we reject the null hypothesis. Having a seat in higher class indeed increases the chance of passenger to survive. 
+
+
+**Hypothesis 2**
+
+H0: Paying a higher fare/having a family member on board is insignificant to survive.
+  
+H1: Paying a higher fare/having a family member on board is significant survival.
+
+
+**Result 2**
+
+Fare is insignificant as the p-value is greater than 0.05. We fail to reject the null hypothesis. Paying a higher fare is insignificant to survival.
+
+However, having a family member on board is significant as the p-value is less than 0.05. We reject the null hypothesis. Having a family member on board is significant for survival. As the coefficient is negative, it is in fact reducing the probability to survive significantly. 
 
 ```{r}
 
+hypothesis <- multinom(Survived ~ Pclass + Age + Sex + Family + Fare, data = fdf)
+stargazer(hypothesis, type = "text")
+
 ```
 
+# Conclusions
 
+In our analysis, we concluded that an econometric model can be useful in predicting what features increases survival rate during sinking of the Titanic in 1912. As we know from literature one of the reasons that the shipwreck lead to such loss of life is that were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, like younger passengers, the upper-class and those who had no family members on board which we confirmed with the results of the Multinomial Logit Model.
 
-# References
+# Bibliography
 
+1. Whitley M., “Using statistical learning to predict survival of passengers on the RMS Titanic” K-State Research Exchange, (1), 2015, pp. 32
 
+2. Kshirsagar V., Phalke N., “Titanic Survival Analysis using Logistic Regression” International Research Journal of Engineering and Technology (IRJET), (2), 2019, pp. 90︎
+
+3. Donges N., “Predicting the Survival of Titanic Passengers” towardsdatascience.com, (3), 2018
 
